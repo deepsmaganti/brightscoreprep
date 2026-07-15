@@ -35,3 +35,11 @@ DATA MODEL
 PRACTICE STANINE
 The existing practice-stanine estimate remains unchanged and is clearly labeled
 as an unofficial raw-accuracy estimate.
+
+
+CLASSIC NAVIGATION REVISION
+- The expedition/trail-map home panel was removed.
+- The original three-card navigation is restored:
+  Timed Full Test, Untimed Full Test, and Untimed by Section.
+- A compact level tab row was added above the original navigation so all ISEE levels remain accessible.
+- Question navigation, audio, timers, scoring, history, and results were not changed.

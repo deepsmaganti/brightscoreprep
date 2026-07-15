@@ -74,6 +74,7 @@ const state = {
   minutes:{},            // minutes[levelId][testId][sectionId]
   selectedSections:{},   // selectedSections[levelId][testId][sectionId] = bool
   mode: 'timed',         // 'timed' | 'untimed'
+  practiceType: 'timedFull', // 'timedFull' | 'untimedFull' | 'section'
   activeSections: [],    // section ids included in the CURRENT attempt, in order
   sectionIdx:0, qIdx:0, answers:{}, timeRemaining:0, timeElapsed:0, timerId:null,
   audioPlays:{}, scriptShown:{}, history:[], essayText:''
@@ -129,12 +130,49 @@ function goSettings(){ state.screen='settings'; render(); }
 function chooseLevel(levelId){
   state.levelId = levelId;
   state.testId = firstTestId(levelId);
+  state.practiceType = 'timedFull';
+  state.mode = 'timed';
   ensureMinutesFor(state.levelId, state.testId);
   ensureSelectedFor(state.levelId, state.testId);
+  selectAllSections(false);
   render();
 }
-function chooseTest(testId){ state.testId = testId; ensureMinutesFor(state.levelId, state.testId); ensureSelectedFor(state.levelId, state.testId); render(); }
+function chooseTest(testId){
+  state.testId = testId;
+  state.practiceType = 'timedFull';
+  state.mode = 'timed';
+  ensureMinutesFor(state.levelId, state.testId);
+  ensureSelectedFor(state.levelId, state.testId);
+  selectAllSections(false);
+  render();
+}
 function setMode(m){ state.mode = m; render(); }
+function choosePracticeType(type){
+  state.practiceType = type;
+  if(type==='timedFull'){
+    state.mode='timed';
+    selectAllSections(false);
+  } else if(type==='untimedFull'){
+    state.mode='untimed';
+    selectAllSections(false);
+  } else {
+    state.mode='untimed';
+    const order=sectionOrder();
+    const selected=currentSelected();
+    const currentOne=order.find(id=>selected[id]);
+    order.forEach(id=>selected[id]=false);
+    if(order.length) selected[currentOne && order.includes(currentOne) ? currentOne : order[0]]=true;
+  }
+  render();
+}
+function chooseSingleSection(secId){
+  const selected=currentSelected();
+  sectionOrder().forEach(id=>selected[id]=false);
+  selected[secId]=true;
+  state.practiceType='section';
+  state.mode='untimed';
+  render();
+}
 function toggleSectionSelected(secId){
   const sel = currentSelected();
   const onCount = Object.values(sel).filter(Boolean).length;
@@ -142,10 +180,10 @@ function toggleSectionSelected(secId){
   sel[secId] = !sel[secId];
   render();
 }
-function selectAllSections(){
+function selectAllSections(shouldRender=true){
   const sel = currentSelected();
   sectionOrder().forEach(id=> sel[id]=true);
-  render();
+  if(shouldRender) render();
 }
 
 function startPractice(){
@@ -359,96 +397,112 @@ function body(){
 }
 
 function homeScreen(){
-  const level = currentLevel();
-  const test = currentTest();
-  const flat = currentFlat();
-  const mins = currentMinutes();
-  const sel = currentSelected();
+  const level=currentLevel();
+  const test=currentTest();
+  const flat=currentFlat();
+  const mins=currentMinutes();
+  const selected=currentSelected();
 
-  let heroHtml;
-  if(test){
-    const included = sectionOrder().filter(id=>sel[id]);
-    const totalMin = included.reduce((a,id)=> a + (mins[id]||0), 0);
-    const totalQ = included.reduce((a,id)=>{ const f=flat[id]; return a + (f ? f.length : 0); }, 0);
-    const isFull = included.length === sectionOrder().length;
-    heroHtml = `
-    <div class="hero">
-      <h2>${state.studentName ? esc(state.studentName)+"'s" : 'Ready for an'} expedition?</h2>
-      <p>${esc(level.label)} Level · ${esc(test.label)} — ${isFull ? 'full test' : included.map(id=>test.sections[id].shortName).join(' + ')}, ${totalQ} scored questions${state.mode==='timed' ? `, about ${totalMin} minutes` : ', untimed'}.</p>
+  const levelTabs=`<div class="classic-level-tabs" role="navigation" aria-label="ISEE levels">
+    ${LEVEL_IDS.map(lid=>{
+      const l=LEVELS[lid], active=lid===state.levelId, has=levelHasTests(lid);
+      return `<button class="classic-level-tab ${active?'active':''}" onclick="chooseLevel('${lid}')">
+        <span>${esc(l.label)}</span><small>${has ? Object.keys(TESTS[lid]).length+' test'+(Object.keys(TESTS[lid]).length===1?'':'s') : 'Coming soon'}</small>
+      </button>`;
+    }).join('')}
+  </div>`;
 
-      <div class="mode-toggle">
-        <button class="mode-btn ${state.mode==='timed'?'active':''}" onclick="setMode('timed')">⏱ Timed<span class="sub">Official ISEE time limits</span></button>
-        <button class="mode-btn ${state.mode==='untimed'?'active':''}" onclick="setMode('untimed')">✏️ Untimed<span class="sub">No pressure — practice at your own pace</span></button>
+  if(!test){
+    return `
+    <section class="classic-home card">
+      ${levelTabs}
+      <div class="classic-empty">
+        <span class="classic-badge">BrightScore Prep</span>
+        <h2>${esc(level.label)} Level</h2>
+        <p>Practice content for this level has not been added yet. The level is ready, and a new test will appear here automatically when it is added to <code>data.js</code>.</p>
       </div>
-
-      <div class="log-title" style="color:rgba(255,255,255,0.85);">Which sections?</div>
-      <div class="section-chips">
-        ${sectionOrder().map(id=>`<button class="chip ${sel[id]?'active':''}" onclick="toggleSectionSelected('${id}')">${test.sections[id].icon} ${test.sections[id].shortName}</button>`).join('')}
-        <button class="chip-select-all" onclick="selectAllSections()">Select all</button>
-      </div>
-
-      <div class="trailmap">
-        ${sectionOrder().map((id,i)=>{
-          const sec = test.sections[id];
-          const f = flat[id];
-          return `<div class="waypoint" style="${sel[id]?'':'opacity:0.4;'}"><div class="dot">${sec.icon}</div><div class="label">${sec.shortName}</div><div class="sub">${mins[id]} min${f?` · ${f.length}q`:''}</div></div>
-          ${i<sectionOrder().length-1?'<div class="trail-line"></div>':''}`;
-        }).join('')}
-      </div>
-      <button class="btn btn-primary btn-lg" onclick="startPractice()">${isFull ? "Start today's expedition" : 'Start selected sections'} →</button>
-    </div>`;
-  } else {
-    heroHtml = `
-    <div class="hero">
-      <h2>${esc(level.label)} Level</h2>
-      <p>${esc(level.subtitle)} — no practice tests loaded yet for this level.</p>
-      <div class="empty-state" style="color:var(--paper);">
-        <div class="icon">🗺️</div>
-        <p style="color:rgba(255,255,255,0.85);">Send over a ${esc(level.label)} Level workbook in the same pattern as the Primary test, and it'll show up here as a new expedition. Expected sections: ${level.sectionOrder.map(id=>sectionLabelGuess(id)).join(', ')}.</p>
-      </div>
-    </div>`;
+    </section>
+    <div class="footer-links"><a href="privacy.html">Privacy notice</a></div>`;
   }
 
+  const order=sectionOrder();
+  const fullQuestionCount=order.reduce((sum,id)=>sum+(flat[id]?flat[id].length:0),0);
+  const fullMinutes=order.reduce((sum,id)=>sum+(mins[id]||0),0);
+  const selectedSection=order.find(id=>selected[id]) || order[0];
+  const isSection=state.practiceType==='section';
+
   return `
-  ${heroHtml}
+  <section class="classic-home card">
+    ${levelTabs}
 
-  <div class="card">
-    <div class="log-title">Choose a level</div>
-    <div class="level-picker">
-      ${LEVEL_IDS.map(lid=>{
-        const l = LEVELS[lid]; const active = lid===state.levelId; const has = levelHasTests(lid);
-        return `<div class="level-card ${active?'active':''}" onclick="chooseLevel('${lid}')">
-          <div class="icon">${l.icon}</div><h4>${esc(l.label)}</h4><p>${esc(l.subtitle)}</p>
-          <p style="margin-top:4px; ${has?'color:var(--fern-deep);font-weight:700;':''}">${has ? Object.keys(TESTS[lid]).length+' test'+(Object.keys(TESTS[lid]).length>1?'s':'') : 'No tests yet'}</p>
-        </div>`;
-      }).join('')}
+    <div class="classic-title-row">
+      <div>
+        <span class="classic-badge">Interactive browser test</span>
+        <h2>${esc(level.label)} Level · ${esc(test.label)}</h2>
+        <p>Choose a timed full test, an untimed full test, or focused practice by section.</p>
+      </div>
+      ${Object.keys(TESTS[state.levelId]).length>1 ? `
+      <label class="classic-test-select">Practice test
+        <select onchange="chooseTest(this.value)">
+          ${Object.keys(TESTS[state.levelId]).map(tid=>`<option value="${tid}" ${tid===state.testId?'selected':''}>${esc(TESTS[state.levelId][tid].label)}</option>`).join('')}
+        </select>
+      </label>` : ''}
     </div>
-  </div>
 
-  ${levelHasTests(state.levelId) ? `
-  <div class="card">
-    <div class="log-title">${esc(level.label)} Level practice tests</div>
-    <div class="test-picker">
-      ${Object.keys(TESTS[state.levelId]).map(tid=>{
-        const tt = TESTS[state.levelId][tid]; const f = FLAT_BY_TEST[state.levelId][tid];
-        const q = LEVELS[state.levelId].sectionOrder.filter(id=>tt.sections[id]).reduce((a,id)=> a + (f[id] ? f[id].length : 0), 0);
-        const active = tid===state.testId;
-        return `<div class="test-card ${active?'active':''}">
-          <div><h4>${esc(tt.label)}</h4><p>${q} scored questions${LEVELS[state.levelId].sectionOrder.some(id=>tt.sections[id] && isEssaySection(tt.sections[id]))?' + essay':''} · can be retaken any time</p></div>
-          ${active ? `<span class="test-card-badge">Selected</span>` : `<button class="btn btn-ghost btn-sm" onclick="chooseTest('${tid}')">Select</button>`}
-        </div>`;
-      }).join('')}
+    <div class="classic-mode-grid">
+      <button class="classic-mode-card ${state.practiceType==='timedFull'?'selected':''}" onclick="choosePracticeType('timedFull')">
+        <span class="classic-card-label">Realistic practice</span>
+        <strong>Timed Full Test</strong>
+        <p>${fullMinutes} minutes · ${fullQuestionCount} scored questions</p>
+      </button>
+
+      <button class="classic-mode-card ${state.practiceType==='untimedFull'?'selected':''}" onclick="choosePracticeType('untimedFull')">
+        <span class="classic-card-label">No clock</span>
+        <strong>Untimed Full Test</strong>
+        <p>Complete all ${fullQuestionCount} scored questions at your own pace.</p>
+      </button>
+
+      <button class="classic-mode-card ${isSection?'selected':''}" onclick="choosePracticeType('section')">
+        <span class="classic-card-label">Focused practice</span>
+        <strong>Untimed by Section</strong>
+        <p>Choose one section to practice without a timer.</p>
+      </button>
     </div>
-  </div>` : ''}
 
-  <div class="card">
-    <div class="log-title">Past expeditions</div>
-    ${state.history.length===0 ? `<div class="empty-log">No expeditions yet — your first one will show up here as a journal stamp.</div>` :
-      state.history.map(h=>`<div class="log-entry"><span>${new Date(h.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})} — ${esc(h.name)} · ${esc(h.levelLabel||'')} ${esc(h.testLabel||'')} · <span class="mode-pill">${h.mode||'timed'}</span>${!h.isFull && h.totalQ ? ' <span class="mode-pill">section</span>' : ''}</span><span class="stamp">${h.totalQ ? h.overallPct+'%' : ''} ${h.totalQ && h.isFull ? '<span class="stanine-badge" title="Practice stanine estimate — full test only">'+h.overallStanine+'</span>' : ''}</span></div>`).join('')}
-  </div>
-  ${state.levelId==='primary' && test ? `<div class="callout">📌 A heads-up: 4 math questions in Test #2 (the cherry-sharing group, the missing puzzle piece, and the two reflection/symmetry questions) use original diagrams rebuilt to match the workbook's answer key, since their source images weren't available as text. Worth double-checking those four against the printed workbook.</div>` : ''}
-  <div class="footer-links"><a href="privacy.html">Privacy notice</a></div>
-  `;
+    ${isSection ? `
+    <div class="classic-section-chooser">
+      <div class="classic-subheading">Choose a section</div>
+      <div class="classic-section-grid">
+        ${order.map(id=>{
+          const sec=test.sections[id];
+          const f=flat[id];
+          return `<button class="classic-section-card ${selectedSection===id?'selected':''}" onclick="chooseSingleSection('${id}')">
+            <span class="classic-section-icon">${sec.icon}</span>
+            <strong>${esc(sec.shortName)}</strong>
+            <small>${f?f.length+' questions':'Writing sample'} · ${mins[id]} min official time</small>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="classic-start-area">
+      <label class="classic-name-field">
+        <span>Student name</span>
+        <input value="${esc(state.studentName)}" oninput="state.studentName=this.value" placeholder="Enter a nickname or student code">
+      </label>
+      <button class="btn btn-primary classic-start-button" onclick="startPractice()">Start practice →</button>
+    </div>
+
+    <p class="classic-footnote">Progress and past attempts are saved only in this browser. A practice stanine estimate appears after a completed full test.</p>
+  </section>
+
+  ${state.history.length ? `
+  <section class="card classic-history">
+    <div class="log-title">Past practice</div>
+    ${state.history.map(h=>`<div class="log-entry"><span>${new Date(h.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})} — ${esc(h.name)} · ${esc(h.levelLabel||'')} ${esc(h.testLabel||'')} · <span class="mode-pill">${h.mode||'timed'}</span>${!h.isFull && h.totalQ ? ' <span class="mode-pill">section</span>' : ''}</span><span class="stamp">${h.totalQ ? h.overallPct+'%' : ''} ${h.totalQ && h.isFull ? '<span class="stanine-badge" title="Practice stanine estimate — full test only">'+h.overallStanine+'</span>' : ''}</span></div>`).join('')}
+  </section>` : ''}
+
+  <div class="footer-links"><a href="privacy.html">Privacy notice</a></div>`;
 }
 function sectionLabelGuess(id){
   const names = { auditory:'Auditory Comprehension', reading: (state.levelId==='primary') ? 'Reading' : 'Reading Comprehension', math:'Mathematics', verbal:'Verbal Reasoning', quantitative:'Quantitative Reasoning', mathAch:'Mathematics Achievement', essay:'Essay' };
