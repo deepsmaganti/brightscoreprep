@@ -1,50 +1,41 @@
-ISEE PRIMARY 2 — HOST-READY STATIC WEBSITE
+BRIGHTSCORE PREP — ISEE PRACTICE FOR EVERY LEVEL
+Host-ready static website (no server, no build step, no database)
+
+WHAT IS INCLUDED
+- BrightScore Prep branding and a more colorful, accessible visual system
+- Level selector for Primary 2, Primary 3, Primary 4, Lower, Middle, and Upper
+- Correct section order, question-count blueprint, and standard timing for every level
+- One complete Primary 2 full-length practice test
+- Timed and untimed modes, section-only practice, answer review, local history, and estimated practice stanine
+- Visible Primary 2 auditory transcript with unlimited audio replay
 
 FILES
-- index.html: the student practice test
-- privacy.html: a basic privacy notice
+- index.html       app shell and visual styling
+- app.js           navigation, timer, scoring, local storage, and rendering
+- data.js          level definitions and all test content
+- data-template.js copy-ready example showing how to add another test
+- privacy.html     plain-language privacy notice
 
-FASTEST DEPLOYMENT
-1. Sign in to Vercel.
-2. Open Vercel Drop.
-3. Drag this entire folder or this ZIP file into the upload area.
-4. Vercel will generate a public HTTPS address.
-5. Share that address with students.
+ADDING CONTENT FOR ANOTHER LEVEL
+1. Open data.js.
+2. Add a new test object beneath TESTS.primary3, TESTS.primary4, TESTS.lower, TESTS.middle, or TESTS.upper.
+3. Follow the schema in data-template.js.
+4. Keep every question ID unique across the site.
+5. Commit the changed data.js file and redeploy.
 
-NETLIFY
-1. Sign in to Netlify.
-2. Choose a manual deploy / drag-and-drop deploy.
-3. Upload this folder or ZIP.
-4. Share the generated HTTPS address.
+CURRENT CONTENT STATUS
+- Primary 2: Practice Test #1 loaded
+- Primary 3: engine and official blueprint ready; questions not yet loaded
+- Primary 4: engine and official blueprint ready; questions not yet loaded
+- Lower: engine, five-section flow, and essay editor ready; questions not yet loaded
+- Middle: engine, five-section flow, and essay editor ready; questions not yet loaded
+- Upper: engine, five-section flow, and essay editor ready; questions not yet loaded
 
-GITHUB PAGES
-1. Create a GitHub repository.
-2. Upload index.html and privacy.html to the repository root.
-3. In repository Settings > Pages, publish from the main branch/root.
-4. Share the generated Pages URL.
+DEPLOYMENT
+Upload all files in this folder to the root of a GitHub Pages repository, or drag the ZIP/folder into Netlify or Vercel.
 
-CURRENT DATA MODEL
-- Many students can use the same public URL at the same time.
-- Each browser/device stores its own progress locally.
-- There is no teacher dashboard or central score history.
-- On a shared device/browser, one student's saved session can replace another student's session.
-- Students should print/save their final results before clearing or retaking.
-
-RECOMMENDED STUDENT IDENTIFIER
-Use a nickname, initials, or a teacher-assigned code rather than a child's full legal name.
-
-A future classroom edition can add:
-- teacher and student sign-in
-- class codes
-- assignments
-- central score storage
-- attempt history
-- teacher dashboard
-- CSV export
-
+DATA AND PRIVACY
+The site has no login or central database. Names, answers, timing, and attempt history remain in the student's current browser via localStorage. Use initials, a nickname, or an assigned code rather than a child's full legal name.
 
 PRACTICE STANINE
-- The completed full test shows an Estimated Practice Stanine from 1 to 9.
-- It appears only after all 48 questions are completed, not after single-section practice.
-- It is a transparent raw-accuracy practice band, not an official ISEE stanine.
-- Official ISEE stanines are norm-referenced by grade and require scaled-score and norm data.
+The stanine shown after a complete test is a transparent estimate based on raw percentage. It is not an official ERB/ISEE stanine, which requires grade-level scaled scores and national norm data.
