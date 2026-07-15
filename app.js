@@ -54,18 +54,11 @@ function stanineFromPercent(pct){
    there's no account system or central server. Wrapped in try/catch since
    some browsers restrict storage in private/incognito modes. */
 const LS_PREFIX = 'brightscoreprep:';
-const LEGACY_LS_PREFIX = 'readysetprep:';
 function storageSafeSet(key, value){
   try{ localStorage.setItem(LS_PREFIX+key, JSON.stringify(value)); return true; }catch(e){ return false; }
 }
 function storageSafeGet(key){
-  try{
-    const raw = localStorage.getItem(LS_PREFIX+key);
-    if(raw) return JSON.parse(raw);
-    const legacy = localStorage.getItem(LEGACY_LS_PREFIX+key);
-    if(legacy){ localStorage.setItem(LS_PREFIX+key, legacy); return JSON.parse(legacy); }
-    return null;
-  }catch(e){ return null; }
+  try{ const raw = localStorage.getItem(LS_PREFIX+key); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
 }
 function storageSafeRemove(key){
   try{ localStorage.removeItem(LS_PREFIX+key); }catch(e){}
@@ -76,8 +69,8 @@ function firstTestId(levelId){ const ids = Object.keys(TESTS[levelId]); return i
 
 const state = {
   screen:'home', studentName:'',
-  levelId: 'primary2',
-  testId: firstTestId('primary2'),
+  levelId: 'primary',
+  testId: firstTestId('primary'),
   minutes:{},            // minutes[levelId][testId][sectionId]
   selectedSections:{},   // selectedSections[levelId][testId][sectionId] = bool
   mode: 'timed',         // 'timed' | 'untimed'
@@ -114,19 +107,6 @@ function currentTest(){ return state.testId ? TESTS[state.levelId][state.testId]
 function currentFlat(){ return state.testId ? FLAT_BY_TEST[state.levelId][state.testId] : null; }
 function currentMinutes(){ return (state.minutes[state.levelId] && state.minutes[state.levelId][state.testId]) || {}; }
 function currentSelected(){ return (state.selectedSections[state.levelId] && state.selectedSections[state.levelId][state.testId]) || {}; }
-const SECTION_COLORS = {
-  auditory:{accent:'#F97316',light:'#FFF1E8'}, reading:{accent:'#2F80ED',light:'#E4F1FF'},
-  math:{accent:'#8B5CF6',light:'#F0E9FF'}, verbal:{accent:'#E44C8B',light:'#FFE5F1'},
-  quantitative:{accent:'#0EA5E9',light:'#E3F5FD'}, mathAch:{accent:'#7C3AED',light:'#EEE6FF'},
-  essay:{accent:'#D99016',light:'#FFF1D6'}
-};
-function sectionColor(id){ return SECTION_COLORS[id] || {accent:currentLevel().theme.accent,light:currentLevel().theme.light}; }
-function applyLevelTheme(){
-  const t=currentLevel().theme || {accent:'#3157C8',deep:'#2949A8',light:'#E7ECFF'};
-  const root=document.documentElement;
-  root.style.setProperty('--level-accent',t.accent); root.style.setProperty('--level-deep',t.deep); root.style.setProperty('--level-light',t.light);
-  document.body.dataset.level=state.levelId;
-}
 function sectionOrder(){ return currentLevel().sectionOrder.filter(id => currentTest() && currentTest().sections[id]); }
 function isFullTest(){
   const full = sectionOrder();
@@ -243,7 +223,7 @@ function playPassage(passageId, text){
   if('speechSynthesis' in window){
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate=0.90; utter.pitch=1.02;
+    utter.rate=0.92; utter.pitch=1.05;
     window.speechSynthesis.speak(utter);
   }
   render();
@@ -268,7 +248,7 @@ function renderFigure(fig){
   if(!fig) return '';
   let inner='';
   if(fig.type==='html'){
-    inner = `<div class="raw-visual">${fig.html}</div>`;
+    inner = fig.html || '';
   } else if(fig.type==='table'){
     inner = `<table class="fig-table"><tr>${fig.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr><tr>${fig.values.map(v=>`<td>${v}</td>`).join('')}</tr></table>`;
   } else if(fig.type==='grid'){
@@ -349,7 +329,6 @@ function triangleHTML(direction, size, color){
 
 /* ---------------- Rendering ---------------- */
 function render(){
-  applyLevelTheme();
   const app=document.getElementById('app');
   app.innerHTML = header() + body();
   if(state.screen==='question' || state.screen==='essay') updateTimerBadge();
@@ -357,8 +336,8 @@ function render(){
 }
 function header(){
   return `<div class="topbar">
-    <div class="brand"><div class="brand-mark">★</div>
-      <div class="brand-text"><h1>BrightScore Prep</h1><span>ISEE PRACTICE · EVERY LEVEL</span><span class="tagline">Practice smarter. Grow stronger.</span></div>
+    <div class="brand"><div class="brand-mark">🧭</div>
+      <div class="brand-text"><h1>BrightScore Prep</h1><span>ISEE PRACTICE · ALL LEVELS</span></div>
     </div>
     ${state.screen==='home' ? `<button class="student-pill" onclick="goSettings()">⚙️ ${state.studentName ? esc(state.studentName) : 'Set up'}</button>` : ''}
   </div>`;
@@ -412,7 +391,7 @@ function homeScreen(){
         ${sectionOrder().map((id,i)=>{
           const sec = test.sections[id];
           const f = flat[id];
-          return `<div class="waypoint" style="${sel[id]?'':'opacity:0.4;'}"><div class="dot" style="background:${sectionColor(id).accent};border-color:rgba(255,255,255,.65);">${sec.icon}</div><div class="label">${sec.shortName}</div><div class="sub">${mins[id]} min${f?` · ${f.length}q`:''}</div></div>
+          return `<div class="waypoint" style="${sel[id]?'':'opacity:0.4;'}"><div class="dot">${sec.icon}</div><div class="label">${sec.shortName}</div><div class="sub">${mins[id]} min${f?` · ${f.length}q`:''}</div></div>
           ${i<sectionOrder().length-1?'<div class="trail-line"></div>':''}`;
         }).join('')}
       </div>
@@ -421,11 +400,11 @@ function homeScreen(){
   } else {
     heroHtml = `
     <div class="hero">
-      <div class="coming-badge">✨ Level ready for content</div>
       <h2>${esc(level.label)} Level</h2>
-      <p>${esc(level.subtitle)}. The test engine, official section order, timing, scoring, essay support, and review screens are ready. Add a question set to data.js to publish the first practice test.</p>
-      <div class="blueprint-grid">
-        ${(level.blueprint||[]).map(b=>`<div class="blueprint-card"><strong>${esc(b.name)}</strong><span>${b.unscored?'1 unscored prompt':b.questions+' questions'} · ${b.minutes} min</span></div>`).join('')}
+      <p>${esc(level.subtitle)} — no practice tests loaded yet for this level.</p>
+      <div class="empty-state" style="color:var(--paper);">
+        <div class="icon">🗺️</div>
+        <p style="color:rgba(255,255,255,0.85);">Send over a ${esc(level.label)} Level workbook in the same pattern as the Primary test, and it'll show up here as a new expedition. Expected sections: ${level.sectionOrder.map(id=>sectionLabelGuess(id)).join(', ')}.</p>
       </div>
     </div>`;
   }
@@ -438,10 +417,9 @@ function homeScreen(){
     <div class="level-picker">
       ${LEVEL_IDS.map(lid=>{
         const l = LEVELS[lid]; const active = lid===state.levelId; const has = levelHasTests(lid);
-        const count=Object.keys(TESTS[lid]).length;
-        return `<div class="level-card ${active?'active':''}" style="--card-accent:${l.theme.accent};--card-light:${l.theme.light};" onclick="chooseLevel('${lid}')">
+        return `<div class="level-card ${active?'active':''}" onclick="chooseLevel('${lid}')">
           <div class="icon">${l.icon}</div><h4>${esc(l.label)}</h4><p>${esc(l.subtitle)}</p>
-          <span class="availability">${has ? count+' practice test'+(count>1?'s':'') : 'Content coming next'}</span>
+          <p style="margin-top:4px; ${has?'color:var(--fern-deep);font-weight:700;':''}">${has ? Object.keys(TESTS[lid]).length+' test'+(Object.keys(TESTS[lid]).length>1?'s':'') : 'No tests yet'}</p>
         </div>`;
       }).join('')}
     </div>
@@ -468,6 +446,7 @@ function homeScreen(){
     ${state.history.length===0 ? `<div class="empty-log">No expeditions yet — your first one will show up here as a journal stamp.</div>` :
       state.history.map(h=>`<div class="log-entry"><span>${new Date(h.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})} — ${esc(h.name)} · ${esc(h.levelLabel||'')} ${esc(h.testLabel||'')} · <span class="mode-pill">${h.mode||'timed'}</span>${!h.isFull && h.totalQ ? ' <span class="mode-pill">section</span>' : ''}</span><span class="stamp">${h.totalQ ? h.overallPct+'%' : ''} ${h.totalQ && h.isFull ? '<span class="stanine-badge" title="Practice stanine estimate — full test only">'+h.overallStanine+'</span>' : ''}</span></div>`).join('')}
   </div>
+  ${state.levelId==='primary' && test ? `<div class="callout">📌 A heads-up: 4 math questions in Test #2 (the cherry-sharing group, the missing puzzle piece, and the two reflection/symmetry questions) use original diagrams rebuilt to match the workbook's answer key, since their source images weren't available as text. Worth double-checking those four against the printed workbook.</div>` : ''}
   <div class="footer-links"><a href="privacy.html">Privacy notice</a></div>
   `;
 }
@@ -508,7 +487,7 @@ function sectionIntroScreen(){
   const mins = currentMinutes();
   const flat = currentFlat()[secId];
   return `<div class="card">
-    <div class="intro-icon" style="--section-accent:${sectionColor(secId).accent};background:${sectionColor(secId).light};color:${sectionColor(secId).accent};">${sec.icon}</div>
+    <div class="intro-icon">${sec.icon}</div>
     <span class="mode-pill">${state.mode==='timed'?'⏱ Timed':'✏️ Untimed'}</span>
     <h2>${sec.name}</h2>
     <p style="color:var(--ink-soft); margin-top:4px;">Section ${state.sectionIdx+1} of ${state.activeSections.length} · ${state.mode==='timed' ? mins[secId]+' minutes' : 'no time limit'}${flat?` · ${flat.length} questions`:' · unscored writing sample'}</p>
@@ -529,10 +508,12 @@ function questionScreen(){
   if(q.passage){
     if(secId==='auditory'){
       const plays = state.audioPlays[q.passage.id]||0;
+      const shown = state.scriptShown[q.passage.id];
       passageHtml = `<div class="listen-box">
-        <button class="btn btn-primary" onclick="playPassage('${q.passage.id}', \`${q.passage.text.replace(/`/g,"'")}\`)">🔊 ${plays===0?'Play the story':'Play again'}</button>
-        <p class="hint">Unlimited replays · played ${plays} time${plays===1?'':'s'}</p>
-        <div class="passage-box auditory-visible"><h4>${esc(q.passage.title||'Auditory Passage')}</h4>${esc(q.passage.text).split('\n\n').map(p=>`<p>${p}</p>`).join('')}</div>
+        <button class="btn btn-primary" ${plays>=2?'disabled':''} onclick="playPassage('${q.passage.id}', \`${q.passage.text.replace(/`/g,"'")}\`)">🔊 ${plays===0?'Play the story':'Play again'}</button>
+        <p class="hint">${plays>=2 ? "You've used both plays for this story." : `Plays remaining: ${2-plays}`}</p>
+        <div class="script-reveal"><button class="btn btn-ghost btn-sm" onclick="toggleScript('${q.passage.id}')">${shown?'Hide':'Or, have an adult read it instead →'}</button></div>
+        ${shown ? `<div class="script-box"><h5>Parent / teacher script — don't let the student read this</h5>${esc(q.passage.text)}</div>` : ''}
       </div>`;
     } else {
       passageHtml = `<div class="passage-box"><h4>${esc(q.passage.title)}</h4>${esc(q.passage.text).split('\n\n').map(p=>`<p>${p}</p>`).join('')}</div>`;
@@ -550,12 +531,10 @@ function questionScreen(){
         <span class="choice-letter">${letters[i]}</span><span class="tri-frame">${triangleHTML(dir,40)}</span>
       </button>`).join('');
   } else {
-    choicesHtml = q.choices.map((c,i)=>{
-      const content = (c && typeof c==='object' && c.html) ? `<span class="choice-html">${c.html}</span>` : `<span>${esc(c && typeof c==='object' ? (c.text||'') : c)}</span>`;
-      return `<button class="choice-btn ${selected===i?'selected':''}" onclick="selectChoice(${i})">
-        <span class="choice-letter">${letters[i]}</span>${content}
-      </button>`;
-    }).join('');
+    choicesHtml = q.choices.map((c,i)=>`
+      <button class="choice-btn ${selected===i?'selected':''}" onclick="selectChoice(${i})">
+        <span class="choice-letter">${letters[i]}</span><span>${esc(c)}</span>
+      </button>`).join('');
   }
 
   const questionAndChoices = `
@@ -576,7 +555,7 @@ function questionScreen(){
 
   return `
   <div class="test-topbar">
-    <div class="section-chip" style="--section-accent:${sectionColor(secId).accent};">${secMeta.icon} ${secMeta.name} — Q${state.qIdx+1} of ${flat.length}</div>
+    <div class="section-chip">${secMeta.icon} ${secMeta.name} — Q${state.qIdx+1} of ${flat.length}</div>
     <div class="timer-badge mono ${state.mode==='untimed'?'':''}" id="timerBadge">${state.mode==='timed'?fmtTime(state.timeRemaining):fmtTime(state.timeElapsed)+' elapsed'}</div>
   </div>
   <div class="trail-progress">
@@ -597,7 +576,7 @@ function essayScreen(){
   const wordCount = state.essayText.trim() ? state.essayText.trim().split(/\s+/).length : 0;
   return `
   <div class="test-topbar">
-    <div class="section-chip" style="--section-accent:${sectionColor(secId).accent};">${sec.icon} ${sec.name}</div>
+    <div class="section-chip">${sec.icon} ${sec.name}</div>
     <div class="timer-badge mono" id="timerBadge">${state.mode==='timed'?fmtTime(state.timeRemaining):fmtTime(state.timeElapsed)+' elapsed'}</div>
   </div>
   <div class="card">
@@ -658,9 +637,9 @@ function resultsScreen(){
     const sec = test.sections[id];
     const p = s.perSection[id];
     if(p.isEssay){
-      return `<div class="stamp-card"><div class="icon" style="background:${sectionColor(id).accent};">${sec.icon}</div><h4>${sec.name}</h4><div class="score">${p.words}</div><div class="score-label">words · not scored</div></div>`;
+      return `<div class="stamp-card"><div class="icon">${sec.icon}</div><h4>${sec.name}</h4><div class="score">${p.words}</div><div class="score-label">words · not scored</div></div>`;
     }
-    return `<div class="stamp-card"><div class="icon" style="background:${sectionColor(id).accent};">${sec.icon}</div><h4>${sec.name}</h4><div class="score">${p.correct}/${p.total}</div><div class="score-label">${p.pct}%${fullTest?' · stanine '+p.stanine:''}</div></div>`;
+    return `<div class="stamp-card"><div class="icon">${sec.icon}</div><h4>${sec.name}</h4><div class="score">${p.correct}/${p.total}</div><div class="score-label">${p.pct}%${fullTest?' · stanine '+p.stanine:''}</div></div>`;
   }).join('')}
   </div>
   <div class="card">
@@ -691,9 +670,8 @@ function reviewScreen(){
       ${flat[id].map((q,i)=>{
         const given = state.answers[q.id];
         const tag = given===undefined ? '<span class="review-tag skipped">Skipped</span>' : given===q.correct ? '<span class="review-tag right">Correct</span>' : '<span class="review-tag wrong">Try again</span>';
-        const plainChoice = c => (c && typeof c==='object') ? (c.text || 'the pictured option') : c;
-        const correctLabel = q.choiceRender==='triangle' ? `the ${q.choices[q.correct]}-pointing option` : esc(plainChoice(q.choices[q.correct]));
-        const givenLabel = q.choiceRender==='triangle' ? (given!==undefined?`the ${q.choices[given]}-pointing option`:'') : (given!==undefined?esc(plainChoice(q.choices[given])):'');
+        const correctLabel = q.choiceRender==='triangle' ? `the ${q.choices[q.correct]}-pointing option` : esc(q.choices[q.correct]);
+        const givenLabel = q.choiceRender==='triangle' ? (given!==undefined?`the ${q.choices[given]}-pointing option`:'') : (given!==undefined?esc(q.choices[given]):'');
         return `<div class="review-item">
           ${tag}${q.approximated?' <span class="review-tag skipped">Recreated diagram</span>':''}
           <div class="rq">${i+1}. ${esc(q.prompt)}</div>

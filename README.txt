@@ -1,41 +1,37 @@
-BRIGHTSCORE PREP — ISEE PRACTICE FOR EVERY LEVEL
+BRIGHTSCORE PREP — ISEE PRACTICE, ALL LEVELS
 Host-ready static website (no server, no build step, no database)
 
-WHAT IS INCLUDED
-- BrightScore Prep branding and a more colorful, accessible visual system
-- Level selector for Primary 2, Primary 3, Primary 4, Lower, Middle, and Upper
-- Correct section order, question-count blueprint, and standard timing for every level
-- One complete Primary 2 full-length practice test
-- Timed and untimed modes, section-only practice, answer review, local history, and estimated practice stanine
-- Visible Primary 2 auditory transcript with unlimited audio replay
+DESIGN APPROACH
+- Preserves the original ReadySetPrep navigation and screen flow.
+- Adds the full ISEE level catalog without replacing the original home-page navigation.
+- Uses a cleaner Inter + Nunito Sans type system and a restrained teal, navy, coral, and gold palette.
+
+LEVELS INCLUDED
+- Primary 2 — full practice test included
+- Primary 3 — level shell ready for content
+- Primary 4 — level shell ready for content
+- Lower — level shell ready for content
+- Middle — level shell ready for content
+- Upper — level shell ready for content
 
 FILES
-- index.html       app shell and visual styling
-- app.js           navigation, timer, scoring, local storage, and rendering
-- data.js          level definitions and all test content
-- data-template.js copy-ready example showing how to add another test
-- privacy.html     plain-language privacy notice
-
-ADDING CONTENT FOR ANOTHER LEVEL
-1. Open data.js.
-2. Add a new test object beneath TESTS.primary3, TESTS.primary4, TESTS.lower, TESTS.middle, or TESTS.upper.
-3. Follow the schema in data-template.js.
-4. Keep every question ID unique across the site.
-5. Commit the changed data.js file and redeploy.
-
-CURRENT CONTENT STATUS
-- Primary 2: Practice Test #1 loaded
-- Primary 3: engine and official blueprint ready; questions not yet loaded
-- Primary 4: engine and official blueprint ready; questions not yet loaded
-- Lower: engine, five-section flow, and essay editor ready; questions not yet loaded
-- Middle: engine, five-section flow, and essay editor ready; questions not yet loaded
-- Upper: engine, five-section flow, and essay editor ready; questions not yet loaded
+- index.html   original app shell/navigation with refreshed visual styling
+- app.js       original navigation, timer, scoring, storage, and test flow
+- data.js      all level definitions and test content
+- privacy.html plain-language privacy notice
 
 DEPLOYMENT
-Upload all files in this folder to the root of a GitHub Pages repository, or drag the ZIP/folder into Netlify or Vercel.
+Upload all four files to the root of GitHub Pages, Netlify, or Vercel.
 
-DATA AND PRIVACY
-The site has no login or central database. Names, answers, timing, and attempt history remain in the student's current browser via localStorage. Use initials, a nickname, or an assigned code rather than a child's full legal name.
+ADDING A NEW TEST
+Add the new test object under TESTS[levelId] in data.js. The original navigation
+will automatically list it under that level without requiring a redesign.
+
+DATA MODEL
+- Progress and attempt history remain in each browser's localStorage.
+- There is no central database, login, or teacher dashboard.
+- Use initials, a nickname, or a student code instead of a child's full legal name.
 
 PRACTICE STANINE
-The stanine shown after a complete test is a transparent estimate based on raw percentage. It is not an official ERB/ISEE stanine, which requires grade-level scaled scores and national norm data.
+The existing practice-stanine estimate remains unchanged and is clearly labeled
+as an unofficial raw-accuracy estimate.

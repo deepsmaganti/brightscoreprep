@@ -2,7 +2,7 @@
    Add future tests by inserting a new object under TESTS[levelId].
    The UI, timing, scoring, and storage logic live in app.js. */
 const LEVELS = {
-  "primary2": {
+  "primary": {
     "label": "Primary 2",
     "shortLabel": "P2",
     "subtitle": "Applying to Grade 2",
@@ -254,7 +254,7 @@ const LEVELS = {
 const LEVEL_IDS = Object.keys(LEVELS);
 
 const TESTS = {
-  "primary2": {
+  "primary": {
     "practice1": {
       "label": "Practice Test #1",
       "description": "Full-length original practice for students applying to Grade 2.",
